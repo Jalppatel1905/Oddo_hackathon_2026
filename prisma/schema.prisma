@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("user") // user, admin
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  receipts      Receipt[]
+  deliveries    Delivery[]
+  transfers     InternalTransfer[]
+  adjustments   StockAdjustment[]
+  stockMoves    StockMove[]
+}
+
+// Product Management
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  sku         String   @unique
+  category    String
+  unitOfMeasure String
+  reorderLevel Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stock           Stock[]
+  receiptLines    ReceiptLine[]
+  deliveryLines   DeliveryLine[]
+  transferLines   TransferLine[]
+  adjustments     StockAdjustment[]
+  stockMoves      StockMove[]
+}
+
+// Warehouse Management
+model Warehouse {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  location  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stock             Stock[]
+  receipts          Receipt[]
+  deliveries        Delivery[]
+  transfersFrom     InternalTransfer[] @relation("TransferFrom")
+  transfersTo       InternalTransfer[] @relation("TransferTo")
+  adjustments       StockAdjustment[]
+  stockMovesFrom    StockMove[] @relation("MoveFrom")
+  stockMovesTo      StockMove[] @relation("MoveTo")
+}
+
+// Stock Levels (Current inventory)
+model Stock {
+  id          String   @id @default(uuid())
+  productId   String
+  warehouseId String
+  quantity    Float    @default(0)
+  updatedAt   DateTime @updatedAt
+
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, warehouseId])
+  @@index([productId])
+  @@index([warehouseId])
+}
+
+// Receipt (Incoming Stock)
+model Receipt {
+  id          String   @id @default(uuid())
+  receiptNo   String   @unique
+  supplier    String
+  warehouseId String
+  status      String   @default("draft") // draft, waiting, ready, done, canceled
+  userId      String
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  validatedAt DateTime?
+
+  warehouse   Warehouse     @relation(fields: [warehouseId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+  lines       ReceiptLine[]
+
+  @@index([warehouseId])
+  @@index([userId])
+  @@index([status])
+}
+
+model ReceiptLine {
+  id         String  @id @default(uuid())
+  receiptId  String
+  productId  String
+  quantity   Float
+
+  receipt    Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  product    Product @relation(fields: [productId], references: [id])
+
+  @@index([receiptId])
+  @@index([productId])
+}
+
+// Delivery (Outgoing Stock)
+model Delivery {
+  id          String   @id @default(uuid())
+  deliveryNo  String   @unique
+  customer    String
+  warehouseId String
+  status      String   @default("draft") // draft, waiting, ready, done, canceled
+  userId      String
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  validatedAt DateTime?
+
+  warehouse   Warehouse      @relation(fields: [warehouseId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
+  lines       DeliveryLine[]
+
+  @@index([warehouseId])
+  @@index([userId])
+  @@index([status])
+}
+
+model DeliveryLine {
+  id         String  @id @default(uuid())
+  deliveryId String
+  productId  String
+  quantity   Float
+
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@index([deliveryId])
+  @@index([productId])
+}
+
+// Internal Transfer
+model InternalTransfer {
+  id              String   @id @default(uuid())
+  transferNo      String   @unique
+  fromWarehouseId String
+  toWarehouseId   String
+  status          String   @default("draft") // draft, waiting, ready, done, canceled
+  userId          String
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  validatedAt     DateTime?
+
+  fromWarehouse   Warehouse      @relation("TransferFrom", fields: [fromWarehouseId], references: [id])
+  toWarehouse     Warehouse      @relation("TransferTo", fields: [toWarehouseId], references: [id])
+  user            User           @relation(fields: [userId], references: [id])
+  lines           TransferLine[]
+
+  @@index([fromWarehouseId])
+  @@index([toWarehouseId])
+  @@index([userId])
+  @@index([status])
+}
+
+model TransferLine {
+  id         String  @id @default(uuid())
+  transferId String
+  productId  String
+  quantity   Float
+
+  transfer   InternalTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product    Product          @relation(fields: [productId], references: [id])
+
+  @@index([transferId])
+  @@index([productId])
+}
+
+// Stock Adjustment
+model StockAdjustment {
+  id          String   @id @default(uuid())
+  adjustmentNo String  @unique
+  productId   String
+  warehouseId String
+  oldQuantity Float
+  newQuantity Float
+  difference  Float
+  reason      String
+  userId      String
+  createdAt   DateTime @default(now())
+
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([productId])
+  @@index([warehouseId])
+  @@index([userId])
+}
+
+// Stock Move History (Ledger)
+model StockMove {
+  id              String   @id @default(uuid())
+  productId       String
+  fromWarehouseId String?
+  toWarehouseId   String?
+  quantity        Float
+  movementType    String   // receipt, delivery, transfer, adjustment
+  referenceNo     String
+  userId          String
+  createdAt       DateTime @default(now())
+
+  product         Product    @relation(fields: [productId], references: [id])
+  fromWarehouse   Warehouse? @relation("MoveFrom", fields: [fromWarehouseId], references: [id])
+  toWarehouse     Warehouse? @relation("MoveTo", fields: [toWarehouseId], references: [id])
+  user            User       @relation(fields: [userId], references: [id])
+
+  @@index([productId])
+  @@index([fromWarehouseId])
+  @@index([toWarehouseId])
+  @@index([userId])
+  @@index([movementType])
+  @@index([createdAt])
+}
