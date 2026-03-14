@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
+import Select from "react-select";
 
 interface Product {
   id: string;
   name: string;
   sku: string;
+  availableQuantity?: number;
 }
 
 interface Warehouse {
@@ -36,21 +38,36 @@ export default function NewDeliveryPage() {
   const [lines, setLines] = useState<Line[]>([{ productId: "", quantity: "" }]);
 
   useEffect(() => {
-    fetchData();
+    fetchWarehouses();
   }, []);
 
-  const fetchData = async () => {
+  // Fetch products when warehouse is selected
+  useEffect(() => {
+    if (formData.warehouseId) {
+      fetchWarehouseProducts();
+    } else {
+      setProducts([]);
+      setLines([{ productId: "", quantity: "" }]);
+    }
+  }, [formData.warehouseId]);
+
+  const fetchWarehouses = async () => {
     try {
-      const [productsRes, warehousesRes] = await Promise.all([
-        fetch("/api/products"),
-        fetch("/api/warehouses"),
-      ]);
-      const productsData = await productsRes.json();
-      const warehousesData = await warehousesRes.json();
-      setProducts(productsData);
-      setWarehouses(warehousesData.filter((w: Warehouse) => w.isActive));
+      const res = await fetch("/api/warehouses");
+      const data = await res.json();
+      setWarehouses(data.filter((w: Warehouse & { isActive: boolean }) => w.isActive));
     } catch (error) {
-      console.error("Failed to fetch data:", error);
+      console.error("Failed to fetch warehouses:", error);
+    }
+  };
+
+  const fetchWarehouseProducts = async () => {
+    try {
+      const res = await fetch(`/api/warehouses/${formData.warehouseId}/products`);
+      const data = await res.json();
+      setProducts(data);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
     }
   };
 
@@ -152,21 +169,27 @@ export default function NewDeliveryPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Warehouse *
                   </label>
-                  <select
-                    required
-                    value={formData.warehouseId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, warehouseId: e.target.value })
+                  <Select
+                    options={warehouses.map((w) => ({
+                      value: w.id,
+                      label: w.name,
+                    }))}
+                    value={
+                      formData.warehouseId
+                        ? {
+                            value: formData.warehouseId,
+                            label: warehouses.find((w) => w.id === formData.warehouseId)?.name || "",
+                          }
+                        : null
                     }
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select warehouse</option>
-                    {warehouses.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(option) =>
+                      setFormData({ ...formData, warehouseId: option?.value || "" })
+                    }
+                    placeholder="Search warehouse..."
+                    className="react-select-container"
+                    classNamePrefix="react-select"
+                    isClearable
+                  />
                 </div>
               </div>
 
@@ -186,44 +209,65 @@ export default function NewDeliveryPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {lines.map((line, index) => (
-                    <div key={index} className="flex gap-2">
-                      <select
-                        value={line.productId}
-                        onChange={(e) =>
-                          updateLine(index, "productId", e.target.value)
-                        }
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="">Select product</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({p.sku})
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={line.quantity}
-                        onChange={(e) =>
-                          updateLine(index, "quantity", e.target.value)
-                        }
-                        placeholder="Quantity"
-                        className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                      />
-                      {lines.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeLine(index)}
-                          className="p-2 text-red-600 hover:text-red-700 dark:text-red-400"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
+                  {!formData.warehouseId && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                      Please select a warehouse first to see available products
                     </div>
-                  ))}
+                  )}
+                  {lines.map((line, index) => {
+                    const selectedProduct = products.find((p) => p.id === line.productId);
+                    return (
+                      <div key={index} className="flex gap-2">
+                        <div className="flex-1">
+                          <Select
+                            options={products.map((p) => ({
+                              value: p.id,
+                              label: `${p.name} (${p.sku}) - Available: ${p.availableQuantity || 0}`,
+                            }))}
+                            value={
+                              line.productId
+                                ? {
+                                    value: line.productId,
+                                    label: selectedProduct
+                                      ? `${selectedProduct.name} (${selectedProduct.sku}) - Available: ${selectedProduct.availableQuantity || 0}`
+                                      : "",
+                                  }
+                                : null
+                            }
+                            onChange={(option) =>
+                              updateLine(index, "productId", option?.value || "")
+                            }
+                            placeholder="Search product..."
+                            className="react-select-container"
+                            classNamePrefix="react-select"
+                            isClearable
+                            isDisabled={!formData.warehouseId}
+                          />
+                        </div>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          max={selectedProduct?.availableQuantity || undefined}
+                          value={line.quantity}
+                          onChange={(e) =>
+                            updateLine(index, "quantity", e.target.value)
+                          }
+                          placeholder="Quantity"
+                          className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        />
+                        {lines.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeLine(index)}
+                            className="p-2 text-red-600 hover:text-red-700 dark:text-red-400"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

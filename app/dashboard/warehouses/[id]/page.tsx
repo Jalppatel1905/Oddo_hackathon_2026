@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
-import { ArrowLeft, MapPin, Package, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { ArrowLeft, MapPin, Package, TrendingUp, TrendingDown, AlertTriangle, Power, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "react-toastify";
 
 interface Product {
   id: string;
@@ -40,6 +41,9 @@ export default function WarehouseDetailPage({ params }: { params: Promise<{ id: 
   const router = useRouter();
   const [warehouse, setWarehouse] = useState<Warehouse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [warehouseId, setWarehouseId] = useState<string>("");
 
   useEffect(() => {
@@ -63,6 +67,61 @@ export default function WarehouseDetailPage({ params }: { params: Promise<{ id: 
       console.error("Failed to fetch warehouse:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async () => {
+    if (!warehouse) return;
+
+    setToggling(true);
+    try {
+      const res = await fetch(`/api/warehouses/${warehouseId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: warehouse.name,
+          location: warehouse.location,
+          isActive: !warehouse.isActive,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setWarehouse({ ...warehouse, isActive: data.isActive });
+        toast.success(
+          `Warehouse ${data.isActive ? "activated" : "deactivated"} successfully!`
+        );
+      } else {
+        toast.error("Failed to update warehouse status");
+      }
+    } catch (error) {
+      console.error("Failed to toggle warehouse status:", error);
+      toast.error("Something went wrong");
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/warehouses/${warehouseId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success("Warehouse deleted successfully!");
+        router.push("/dashboard/warehouses");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete warehouse");
+      }
+    } catch (error) {
+      console.error("Failed to delete warehouse:", error);
+      toast.error("Something went wrong");
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -92,13 +151,45 @@ export default function WarehouseDetailPage({ params }: { params: Promise<{ id: 
         title={warehouse.name}
         description={`Warehouse located at ${warehouse.location}`}
         actions={
-          <Link
-            href="/dashboard/warehouses"
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href={`/dashboard/warehouses/${warehouseId}/edit`}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+            >
+              <Edit className="h-4 w-4" />
+              Edit
+            </Link>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </button>
+            <button
+              onClick={handleToggleStatus}
+              disabled={toggling}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors disabled:opacity-50 ${
+                warehouse.isActive
+                  ? "bg-orange-600 hover:bg-orange-700 text-white"
+                  : "bg-green-600 hover:bg-green-700 text-white"
+              }`}
+            >
+              <Power className="h-4 w-4" />
+              {toggling
+                ? "Updating..."
+                : warehouse.isActive
+                ? "Deactivate"
+                : "Activate"}
+            </button>
+            <Link
+              href="/dashboard/warehouses"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Link>
+          </div>
         }
       />
 
@@ -280,6 +371,36 @@ export default function WarehouseDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Delete Warehouse
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to delete warehouse "{warehouse.name}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

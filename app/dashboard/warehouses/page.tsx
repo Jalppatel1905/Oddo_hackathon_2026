@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
-import { Plus, MapPin, Package, TrendingUp, TrendingDown, Eye } from "lucide-react";
+import { Plus, MapPin, Package, TrendingUp, TrendingDown, Eye, Power } from "lucide-react";
 import Link from "next/link";
+import { toast } from "react-toastify";
 
 interface Warehouse {
   id: string;
@@ -22,6 +23,7 @@ interface Warehouse {
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null);
 
   useEffect(() => {
     fetchWarehouses();
@@ -36,6 +38,40 @@ export default function WarehousesPage() {
       console.error("Failed to fetch warehouses:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async (warehouse: Warehouse) => {
+    setToggling(warehouse.id);
+    try {
+      const res = await fetch(`/api/warehouses/${warehouse.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: warehouse.name,
+          location: warehouse.location,
+          isActive: !warehouse.isActive,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setWarehouses(
+          warehouses.map((w) =>
+            w.id === warehouse.id ? { ...w, isActive: data.isActive } : w
+          )
+        );
+        toast.success(
+          `Warehouse ${data.isActive ? "activated" : "deactivated"} successfully!`
+        );
+      } else {
+        toast.error("Failed to update warehouse status");
+      }
+    } catch (error) {
+      console.error("Failed to toggle warehouse status:", error);
+      toast.error("Something went wrong");
+    } finally {
+      setToggling(null);
     }
   };
 
@@ -146,14 +182,32 @@ export default function WarehousesPage() {
                   </div>
                 </div>
 
-                {/* Action Button */}
-                <Link
-                  href={`/dashboard/warehouses/${warehouse.id}`}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-md transition-colors"
-                >
-                  <Eye className="h-4 w-4" />
-                  View Details
-                </Link>
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleToggleStatus(warehouse)}
+                    disabled={toggling === warehouse.id}
+                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-md transition-colors disabled:opacity-50 text-sm ${
+                      warehouse.isActive
+                        ? "bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400"
+                        : "bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400"
+                    }`}
+                  >
+                    <Power className="h-4 w-4" />
+                    {toggling === warehouse.id
+                      ? "..."
+                      : warehouse.isActive
+                      ? "Deactivate"
+                      : "Activate"}
+                  </button>
+                  <Link
+                    href={`/dashboard/warehouses/${warehouse.id}`}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-md transition-colors text-sm"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Details
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

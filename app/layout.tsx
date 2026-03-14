@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import "react-toastify/dist/ReactToastify.css";
+import "./react-select-styles.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import AuthProvider from "@/components/session-provider";
 import { ToastContainer } from "react-toastify";
+import PWARegister from "@/components/pwa-register";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -20,7 +22,24 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "CoreInventory - Inventory Management System",
-  description: "Modular Inventory Management System",
+  description: "Professional inventory management system for tracking products, warehouses, receipts, and deliveries",
+  manifest: "/manifest.json",
+  themeColor: "#2563eb",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CoreInventory",
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -41,6 +60,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <PWARegister />
             {children}
             <ToastContainer
               position="top-right"

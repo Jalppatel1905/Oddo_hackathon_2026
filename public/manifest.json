@@ -1,0 +1,19 @@
+{
+  "name": "CoreInventory - Inventory Management System",
+  "short_name": "CoreInventory",
+  "description": "Professional inventory management system for tracking products, warehouses, receipts, and deliveries",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

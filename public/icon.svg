@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#2563eb" rx="96"/>
+
+  <!-- Box Icon -->
+  <path d="M256 120L140 180V332L256 392L372 332V180L256 120Z" fill="white" stroke="white" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M256 256L140 196" stroke="#2563eb" stroke-width="12" stroke-linecap="round"/>
+  <path d="M256 256L372 196" stroke="#2563eb" stroke-width="12" stroke-linecap="round"/>
+  <path d="M256 256V392" stroke="#2563eb" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- CI Text -->
+  <text x="256" y="450" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="white" text-anchor="middle">CI</text>
+</svg>

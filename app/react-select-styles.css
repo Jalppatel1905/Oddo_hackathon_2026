@@ -1,0 +1,89 @@
+/* React Select Dark Mode Styles */
+.react-select-container .react-select__control {
+  background-color: transparent;
+  border-color: rgb(209 213 219);
+  min-height: 42px;
+}
+
+.dark .react-select-container .react-select__control {
+  background-color: rgb(55 65 81);
+  border-color: rgb(75 85 99);
+}
+
+.react-select-container .react-select__control:hover {
+  border-color: rgb(156 163 175);
+}
+
+.dark .react-select-container .react-select__control:hover {
+  border-color: rgb(107 114 128);
+}
+
+.react-select-container .react-select__control--is-focused {
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 1px rgb(59 130 246);
+}
+
+.react-select-container .react-select__menu {
+  background-color: white;
+  border: 1px solid rgb(209 213 219);
+}
+
+.dark .react-select-container .react-select__menu {
+  background-color: rgb(31 41 55);
+  border-color: rgb(75 85 99);
+}
+
+.react-select-container .react-select__option {
+  color: rgb(31 41 55);
+}
+
+.dark .react-select-container .react-select__option {
+  color: rgb(243 244 246);
+}
+
+.react-select-container .react-select__option--is-focused {
+  background-color: rgb(243 244 246);
+}
+
+.dark .react-select-container .react-select__option--is-focused {
+  background-color: rgb(55 65 81);
+}
+
+.react-select-container .react-select__option--is-selected {
+  background-color: rgb(59 130 246);
+  color: white;
+}
+
+.react-select-container .react-select__single-value {
+  color: rgb(31 41 55);
+}
+
+.dark .react-select-container .react-select__single-value {
+  color: white;
+}
+
+.react-select-container .react-select__input-container,
+.react-select-container .react-select__placeholder {
+  color: rgb(107 114 128);
+}
+
+.dark .react-select-container .react-select__input-container,
+.dark .react-select-container .react-select__placeholder {
+  color: rgb(156 163 175);
+}
+
+.react-select-container .react-select__indicator-separator {
+  background-color: rgb(209 213 219);
+}
+
+.dark .react-select-container .react-select__indicator-separator {
+  background-color: rgb(75 85 99);
+}
+
+.react-select-container .react-select__indicator {
+  color: rgb(107 114 128);
+}
+
+.dark .react-select-container .react-select__indicator {
+  color: rgb(156 163 175);
+}

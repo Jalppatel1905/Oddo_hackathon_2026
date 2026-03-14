@@ -5,12 +5,14 @@ import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Plus, Package, Check, X, Eye } from "lucide-react";
 import { format } from "date-fns";
+import Select from "react-select";
 
 interface Product {
   id: string;
   name: string;
   sku: string;
   unitOfMeasure: string;
+  availableQuantity?: number;
 }
 
 interface Warehouse {
@@ -61,8 +63,17 @@ export default function TransfersPage() {
   useEffect(() => {
     fetchTransfers();
     fetchWarehouses();
-    fetchProducts();
   }, []);
+
+  // Fetch products when FROM warehouse is selected
+  useEffect(() => {
+    if (fromWarehouseId) {
+      fetchWarehouseProducts();
+    } else {
+      setProducts([]);
+      setLines([{ productId: "", quantity: "" }]);
+    }
+  }, [fromWarehouseId]);
 
   const fetchTransfers = async () => {
     try {
@@ -86,9 +97,9 @@ export default function TransfersPage() {
     }
   };
 
-  const fetchProducts = async () => {
+  const fetchWarehouseProducts = async () => {
     try {
-      const res = await fetch("/api/products");
+      const res = await fetch(`/api/warehouses/${fromWarehouseId}/products`);
       const data = await res.json();
       setProducts(data);
     } catch (error) {
@@ -317,40 +328,65 @@ export default function TransfersPage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     From Warehouse *
                   </label>
-                  <select
-                    value={fromWarehouseId}
-                    onChange={(e) => setFromWarehouseId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                    required
-                  >
-                    <option value="">Select warehouse</option>
-                    {warehouses.map((warehouse) => (
-                      <option key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name} - {warehouse.location}
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    options={warehouses.map((w) => ({
+                      value: w.id,
+                      label: `${w.name} - ${w.location}`,
+                    }))}
+                    value={
+                      fromWarehouseId
+                        ? {
+                            value: fromWarehouseId,
+                            label: warehouses.find((w) => w.id === fromWarehouseId)
+                              ? `${warehouses.find((w) => w.id === fromWarehouseId)?.name} - ${warehouses.find((w) => w.id === fromWarehouseId)?.location}`
+                              : "",
+                          }
+                        : null
+                    }
+                    onChange={(option) => {
+                      setFromWarehouseId(option?.value || "");
+                      // Reset TO warehouse if same as FROM
+                      if (option?.value === toWarehouseId) {
+                        setToWarehouseId("");
+                      }
+                    }}
+                    placeholder="Search from warehouse..."
+                    className="react-select-container"
+                    classNamePrefix="react-select"
+                    isClearable
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     To Warehouse *
                   </label>
-                  <select
-                    value={toWarehouseId}
-                    onChange={(e) => setToWarehouseId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                    required
-                  >
-                    <option value="">Select warehouse</option>
-                    {warehouses.map((warehouse) => (
-                      <option key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name} - {warehouse.location}
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    options={warehouses
+                      .filter((w) => w.id !== fromWarehouseId)
+                      .map((w) => ({
+                        value: w.id,
+                        label: `${w.name} - ${w.location}`,
+                      }))}
+                    value={
+                      toWarehouseId
+                        ? {
+                            value: toWarehouseId,
+                            label: warehouses.find((w) => w.id === toWarehouseId)
+                              ? `${warehouses.find((w) => w.id === toWarehouseId)?.name} - ${warehouses.find((w) => w.id === toWarehouseId)?.location}`
+                              : "",
+                          }
+                        : null
+                    }
+                    onChange={(option) => setToWarehouseId(option?.value || "")}
+                    placeholder="Search to warehouse..."
+                    className="react-select-container"
+                    classNamePrefix="react-select"
+                    isClearable
+                    isDisabled={!fromWarehouseId}
+                  />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium mb-2">Notes</label>
@@ -373,49 +409,69 @@ export default function TransfersPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {lines.map((line, index) => (
-                    <div key={index} className="flex gap-3 items-end">
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium mb-1">Product</label>
-                        <select
-                          value={line.productId}
-                          onChange={(e) => updateLine(index, "productId", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                          required
-                        >
-                          <option value="">Select product</option>
-                          {products.map((product) => (
-                            <option key={product.id} value={product.id}>
-                              {product.name} ({product.sku})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="w-32">
-                        <label className="block text-sm font-medium mb-1">Quantity</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={line.quantity}
-                          onChange={(e) => updateLine(index, "quantity", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                          required
-                          min="0.01"
-                        />
-                      </div>
-                      {lines.length > 1 && (
-                        <Button
-                          type="button"
-                          onClick={() => removeLine(index)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
+                  {!fromWarehouseId && (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                      Please select a FROM warehouse first to see available products
                     </div>
-                  ))}
+                  )}
+                  {lines.map((line, index) => {
+                    const selectedProduct = products.find((p) => p.id === line.productId);
+                    return (
+                      <div key={index} className="flex gap-3 items-end">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product</label>
+                          <Select
+                            options={products.map((p) => ({
+                              value: p.id,
+                              label: `${p.name} (${p.sku}) - Available: ${p.availableQuantity || 0}`,
+                            }))}
+                            value={
+                              line.productId
+                                ? {
+                                    value: line.productId,
+                                    label: selectedProduct
+                                      ? `${selectedProduct.name} (${selectedProduct.sku}) - Available: ${selectedProduct.availableQuantity || 0}`
+                                      : "",
+                                  }
+                                : null
+                            }
+                            onChange={(option) =>
+                              updateLine(index, "productId", option?.value || "")
+                            }
+                            placeholder="Search product..."
+                            className="react-select-container"
+                            classNamePrefix="react-select"
+                            isClearable
+                            isDisabled={!fromWarehouseId}
+                          />
+                        </div>
+                        <div className="w-32">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantity</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={line.quantity}
+                            onChange={(e) => updateLine(index, "quantity", e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-white"
+                            required
+                            min="0.01"
+                            max={selectedProduct?.availableQuantity || undefined}
+                          />
+                        </div>
+                        {lines.length > 1 && (
+                          <Button
+                            type="button"
+                            onClick={() => removeLine(index)}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

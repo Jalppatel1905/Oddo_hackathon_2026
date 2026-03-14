@@ -27,3 +27,44 @@ h1, h2, h3, h4, h5, h6 {
     text-wrap: balance;
   }
 }
+
+/* Mobile responsive utilities */
+@layer components {
+  /* Touch-friendly buttons */
+  button, a {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  }
+
+  /* Scrollable tables on mobile */
+  .table-container {
+    @apply overflow-x-auto -mx-3 md:mx-0;
+  }
+
+  /* Better touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Mobile-friendly cards */
+  .mobile-card {
+    @apply rounded-lg border p-4 md:p-6;
+  }
+}
+
+/* Hide scrollbar for mobile menu */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
