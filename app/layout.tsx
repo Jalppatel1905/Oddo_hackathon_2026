@@ -24,13 +24,6 @@ export const metadata: Metadata = {
   title: "CoreInventory - Inventory Management System",
   description: "Professional inventory management system for tracking products, warehouses, receipts, and deliveries",
   manifest: "/manifest.json",
-  themeColor: "#2563eb",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
