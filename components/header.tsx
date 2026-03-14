@@ -1,6 +1,7 @@
 "use client";
 
 import { ThemeToggle } from "./theme-toggle";
+import { LowStockAlerts } from "./low-stock-alerts";
 
 interface HeaderProps {
   title: string;
@@ -24,6 +25,7 @@ export function Header({ title, description, actions }: HeaderProps) {
         </div>
         <div className="flex items-center gap-3">
           {actions}
+          <LowStockAlerts />
           <ThemeToggle />
         </div>
       </div>

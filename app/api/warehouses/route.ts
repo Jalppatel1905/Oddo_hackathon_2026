@@ -12,10 +12,31 @@ export async function GET() {
     }
 
     const warehouses = await prisma.warehouse.findMany({
+      include: {
+        _count: {
+          select: {
+            stock: true,
+            receipts: true,
+            deliveries: true,
+          },
+        },
+        stock: {
+          select: {
+            quantity: true,
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(warehouses);
+    // Calculate total quantity for each warehouse
+    const warehousesWithStats = warehouses.map((warehouse) => ({
+      ...warehouse,
+      totalQuantity: warehouse.stock.reduce((sum, s) => sum + s.quantity, 0),
+      productCount: warehouse._count.stock,
+    }));
+
+    return NextResponse.json(warehousesWithStats);
   } catch (error) {
     console.error("Warehouses fetch error:", error);
     return NextResponse.json(

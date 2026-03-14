@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { ProductQRCode } from "@/components/product-qr-code";
+import { toast } from "react-toastify";
+import { ImageUpload } from "@/components/image-upload";
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -18,6 +21,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     category: "",
     unitOfMeasure: "",
     reorderLevel: "0",
+    price: "0",
+    imageUrl: "",
   });
 
   useEffect(() => {
@@ -44,6 +49,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           category: data.category,
           unitOfMeasure: data.unitOfMeasure,
           reorderLevel: data.reorderLevel.toString(),
+          price: data.price?.toString() || "0",
+          imageUrl: data.imageUrl || "",
         });
       }
     } catch (error) {
@@ -68,14 +75,19 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Failed to update product");
+        const errorMsg = data.error || "Failed to update product";
+        setError(errorMsg);
+        toast.error(errorMsg);
         setLoading(false);
         return;
       }
 
+      toast.success("Product updated successfully!");
       router.push("/dashboard/products");
     } catch (error) {
-      setError("Something went wrong");
+      const errorMsg = "Something went wrong";
+      setError(errorMsg);
+      toast.error(errorMsg);
       setLoading(false);
     }
   };
@@ -107,9 +119,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       />
 
       <div className="p-6">
-        <div className="max-w-2xl">
-          <form onSubmit={handleSubmit}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <form onSubmit={handleSubmit}>
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               {error && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-md text-sm">
                   {error}
@@ -182,6 +195,25 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Unit Price
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        price: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Reorder Level
                   </label>
                   <input
@@ -197,6 +229,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                   />
                 </div>
+
+                <ImageUpload
+                  currentImage={formData.imageUrl}
+                  onImageChange={(url) =>
+                    setFormData({ ...formData, imageUrl: url || "" })
+                  }
+                />
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -217,6 +256,18 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
           </form>
         </div>
+
+        {/* QR Code Section */}
+        {formData.name && formData.sku && (
+          <div className="lg:col-span-1">
+            <ProductQRCode
+              productId={productId}
+              productName={formData.name}
+              sku={formData.sku}
+            />
+          </div>
+        )}
+      </div>
       </div>
     </div>
   );

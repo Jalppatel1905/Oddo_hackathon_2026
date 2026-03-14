@@ -54,7 +54,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, sku, category, unitOfMeasure, reorderLevel } = body;
+    const { name, sku, category, unitOfMeasure, reorderLevel, price, imageUrl } = body;
 
     // Check if SKU is being changed and if it already exists
     const existingProduct = await prisma.product.findFirst({
@@ -79,6 +79,8 @@ export async function PUT(
         category,
         unitOfMeasure,
         reorderLevel: parseInt(reorderLevel) || 0,
+        price: parseFloat(price) || 0,
+        imageUrl: imageUrl || null,
       },
     });
 

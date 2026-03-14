@@ -17,10 +17,21 @@ export async function GET() {
         _count: {
           select: { stock: true },
         },
+        stock: {
+          select: {
+            quantity: true,
+          },
+        },
       },
     });
 
-    return NextResponse.json(products);
+    // Calculate total quantity for each product
+    const productsWithQuantity = products.map((product) => ({
+      ...product,
+      totalQuantity: product.stock.reduce((sum, s) => sum + s.quantity, 0),
+    }));
+
+    return NextResponse.json(productsWithQuantity);
   } catch (error) {
     console.error("Products fetch error:", error);
     return NextResponse.json(
@@ -39,7 +50,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, sku, category, unitOfMeasure, reorderLevel } = body;
+    const { name, sku, category, unitOfMeasure, reorderLevel, price, imageUrl } = body;
 
     if (!name || !sku || !category || !unitOfMeasure) {
       return NextResponse.json(
@@ -67,6 +78,8 @@ export async function POST(req: Request) {
         category,
         unitOfMeasure,
         reorderLevel: parseInt(reorderLevel) || 0,
+        price: parseFloat(price) || 0,
+        imageUrl: imageUrl || null,
       },
     });
 

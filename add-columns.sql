@@ -1,0 +1,2 @@
+ALTER TABLE `product`
+ADD COLUMN `price` FLOAT NOT NULL DEFAULT 0 AFTER `reorderLevel`;

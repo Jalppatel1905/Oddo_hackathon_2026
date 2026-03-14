@@ -5,18 +5,56 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { toast } from "react-toastify";
+import { ImageUpload } from "@/components/image-upload";
 
 export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [skuManuallyEdited, setSkuManuallyEdited] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     sku: "",
     category: "",
     unitOfMeasure: "",
     reorderLevel: "0",
+    price: "0",
+    imageUrl: "",
   });
+
+  // Auto-generate SKU from product name
+  const generateSKU = (productName: string) => {
+    if (!productName) return "";
+
+    // Remove special characters and spaces, convert to uppercase
+    const cleanName = productName
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .trim()
+      .toUpperCase();
+
+    // Take first 3-4 letters
+    const prefix = cleanName.split(" ").map(word => word.substring(0, 2)).join("").substring(0, 4);
+
+    // Add timestamp suffix for uniqueness
+    const suffix = Date.now().toString().slice(-4);
+
+    return `${prefix || "PROD"}-${suffix}`;
+  };
+
+  const handleNameChange = (name: string) => {
+    setFormData({ ...formData, name });
+
+    // Auto-generate SKU only if not manually edited
+    if (!skuManuallyEdited) {
+      setFormData(prev => ({ ...prev, name, sku: generateSKU(name) }));
+    }
+  };
+
+  const handleSkuChange = (sku: string) => {
+    setSkuManuallyEdited(true);
+    setFormData({ ...formData, sku });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,14 +71,19 @@ export default function NewProductPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Failed to create product");
+        const errorMsg = data.error || "Failed to create product";
+        setError(errorMsg);
+        toast.error(errorMsg);
         setLoading(false);
         return;
       }
 
+      toast.success("Product created successfully!");
       router.push("/dashboard/products");
     } catch (error) {
-      setError("Something went wrong");
+      const errorMsg = "Something went wrong";
+      setError(errorMsg);
+      toast.error(errorMsg);
       setLoading(false);
     }
   };
@@ -80,9 +123,7 @@ export default function NewProductPage() {
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
+                    onChange={(e) => handleNameChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter product name"
                   />
@@ -96,12 +137,13 @@ export default function NewProductPage() {
                     type="text"
                     required
                     value={formData.sku}
-                    onChange={(e) =>
-                      setFormData({ ...formData, sku: e.target.value })
-                    }
+                    onChange={(e) => handleSkuChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    placeholder="e.g., PROD-001"
+                    placeholder="Auto-generated (editable)"
                   />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Auto-generated from product name, but you can edit it
+                  </p>
                 </div>
 
                 <div>
@@ -141,6 +183,26 @@ export default function NewProductPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Unit Price
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        price: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Price per unit"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Reorder Level
                   </label>
                   <input
@@ -157,6 +219,13 @@ export default function NewProductPage() {
                     placeholder="Minimum stock level"
                   />
                 </div>
+
+                <ImageUpload
+                  currentImage={formData.imageUrl}
+                  onImageChange={(url) =>
+                    setFormData({ ...formData, imageUrl: url || "" })
+                  }
+                />
               </div>
 
               <div className="flex gap-3 mt-6">

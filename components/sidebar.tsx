@@ -13,12 +13,16 @@ import {
   Settings,
   User,
   LogOut,
+  BarChart3,
+  Warehouse,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Products", href: "/dashboard/products", icon: Package },
+  { name: "Warehouses", href: "/dashboard/warehouses", icon: Warehouse },
   {
     name: "Operations",
     icon: ClipboardList,
@@ -38,7 +42,7 @@ const navigation = [
     ],
   },
   { name: "Move History", href: "/dashboard/history", icon: History },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  // { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -122,13 +126,26 @@ export function Sidebar() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </button>
+        <div className="space-y-1">
+          <Link
+            href="/dashboard/profile"
+            className={`flex items-center gap-3 w-full px-3 py-2 text-sm rounded-md transition-colors ${
+              pathname === "/dashboard/profile"
+                ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+          >
+            <User className="h-4 w-4" />
+            My Profile
+          </Link>
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center gap-3 w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
+        </div>
       </div>
     </div>
   );

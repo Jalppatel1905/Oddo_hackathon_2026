@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
-import { ArrowLeft, CheckCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Printer } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { toast } from "react-toastify";
+import { ConfirmModal } from "@/components/confirm-modal";
 
 interface Delivery {
   id: string;
@@ -43,6 +45,7 @@ export default function DeliveryDetailPage({
   const [loading, setLoading] = useState(true);
   const [validating, setValidating] = useState(false);
   const [deliveryId, setDeliveryId] = useState<string>("");
+  const [validateModal, setValidateModal] = useState(false);
 
   useEffect(() => {
     params.then((p) => {
@@ -69,14 +72,6 @@ export default function DeliveryDetailPage({
   };
 
   const handleValidate = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to validate this delivery? This will reduce stock levels."
-      )
-    ) {
-      return;
-    }
-
     setValidating(true);
     try {
       const res = await fetch(`/api/deliveries/${deliveryId}/validate`, {
@@ -86,14 +81,194 @@ export default function DeliveryDetailPage({
       const data = await res.json();
 
       if (res.ok) {
+        toast.success("Delivery validated successfully!");
         fetchDelivery();
       } else {
-        alert(data.error || "Failed to validate delivery");
+        toast.error(data.error || "Failed to validate delivery");
       }
     } catch (error) {
-      alert("Something went wrong");
+      toast.error("Something went wrong");
     } finally {
       setValidating(false);
+    }
+  };
+
+  const handlePrint = () => {
+    if (!delivery) return;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      const totalItems = delivery.lines.reduce((sum, line) => sum + line.quantity, 0);
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Delivery ${delivery.deliveryNo}</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                margin: 40px;
+                color: #000;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 30px;
+                border-bottom: 2px solid #000;
+                padding-bottom: 20px;
+              }
+              .header h1 {
+                margin: 0;
+                font-size: 24px;
+              }
+              .header p {
+                margin: 5px 0;
+                color: #666;
+              }
+              .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 30px;
+              }
+              .info-item {
+                margin-bottom: 10px;
+              }
+              .info-label {
+                font-weight: bold;
+                color: #666;
+                font-size: 12px;
+                text-transform: uppercase;
+              }
+              .info-value {
+                font-size: 16px;
+                margin-top: 5px;
+              }
+              .status-badge {
+                display: inline-block;
+                padding: 5px 15px;
+                border-radius: 20px;
+                font-size: 14px;
+                text-transform: capitalize;
+                background-color: #e8f5e9;
+                color: #2e7d32;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 30px;
+              }
+              th {
+                background-color: #f5f5f5;
+                padding: 12px;
+                text-align: left;
+                border-bottom: 2px solid #000;
+                font-size: 12px;
+                text-transform: uppercase;
+              }
+              td {
+                padding: 10px 12px;
+                border-bottom: 1px solid #ddd;
+              }
+              .footer {
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                font-size: 12px;
+                color: #666;
+              }
+              .total-row {
+                font-weight: bold;
+                background-color: #f9f9f9;
+              }
+              @media print {
+                body { margin: 20px; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>DELIVERY ORDER</h1>
+              <p>Delivery No: ${delivery.deliveryNo}</p>
+            </div>
+
+            <div class="info-grid">
+              <div class="info-item">
+                <div class="info-label">Customer</div>
+                <div class="info-value">${delivery.customer}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Warehouse</div>
+                <div class="info-value">${delivery.warehouse.name}</div>
+                <div style="font-size: 14px; color: #666;">${delivery.warehouse.location}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Status</div>
+                <div class="info-value">
+                  <span class="status-badge">${delivery.status}</span>
+                </div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Created By</div>
+                <div class="info-value">${delivery.user.name}</div>
+                <div style="font-size: 14px; color: #666;">${format(new Date(delivery.createdAt), "MMM dd, yyyy HH:mm")}</div>
+              </div>
+            </div>
+
+            ${delivery.notes ? `
+              <div style="margin-bottom: 30px; padding: 15px; background-color: #f9f9f9; border-left: 4px solid #2196F3;">
+                <div class="info-label">Notes</div>
+                <div style="margin-top: 5px;">${delivery.notes}</div>
+              </div>
+            ` : ''}
+
+            <table>
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Product</th>
+                  <th style="text-align: center;">Quantity</th>
+                  <th>Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${delivery.lines.map(line => `
+                  <tr>
+                    <td>${line.product.sku}</td>
+                    <td>${line.product.name}</td>
+                    <td style="text-align: center;">${line.quantity}</td>
+                    <td>${line.product.unitOfMeasure}</td>
+                  </tr>
+                `).join('')}
+                <tr class="total-row">
+                  <td colspan="2">TOTAL ITEMS</td>
+                  <td style="text-align: center;">${totalItems}</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+
+            ${delivery.validatedAt ? `
+              <div style="padding: 15px; background-color: #e8f5e9; border-left: 4px solid #4caf50; margin-bottom: 20px;">
+                <strong>Validated:</strong> ${format(new Date(delivery.validatedAt), "MMM dd, yyyy HH:mm")}
+                <br><small>Stock levels have been updated successfully.</small>
+              </div>
+            ` : ''}
+
+            <div class="footer">
+              <p>Printed on: ${format(new Date(), "MMM dd, yyyy HH:mm")}</p>
+              <p>CoreInventory - Inventory Management System</p>
+            </div>
+
+            <script>
+              window.onload = () => {
+                window.print();
+                window.onafterprint = () => window.close();
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
     }
   };
 
@@ -133,9 +308,16 @@ export default function DeliveryDetailPage({
         description="View delivery details"
         actions={
           <div className="flex items-center gap-3">
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+            >
+              <Printer className="h-4 w-4" />
+              Print
+            </button>
             {delivery.status !== "done" && (
               <button
-                onClick={handleValidate}
+                onClick={() => setValidateModal(true)}
                 disabled={validating}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors disabled:opacity-50"
               >
@@ -275,6 +457,16 @@ export default function DeliveryDetailPage({
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={validateModal}
+        title="Validate Delivery"
+        message="Are you sure you want to validate this delivery? This will reduce stock levels and cannot be undone."
+        onConfirm={handleValidate}
+        onCancel={() => setValidateModal(false)}
+        confirmText="Validate"
+        type="warning"
+      />
     </div>
   );
 }
